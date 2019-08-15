@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scale-ci-workload-script
+data:
+  run.sh: |
+    #!/bin/sh
+    set -eo pipefail
+    workload_log() { echo "$(date -u) $@" >&2; }
+    export -f workload_log
+    workload_log "Configuring pbench for running upgrade workload"
+    mkdir -p /var/lib/pbench-agent/tools-default/
+    echo "${USER_NAME:-default}:x:$(id -u):0:${USER_NAME:-default} user:${HOME}:/sbin/nologin" >> /etc/passwd
+    if [ "${ENABLE_PBENCH_AGENTS}" = true ]; then
+      echo "" > /var/lib/pbench-agent/tools-default/disk
+      echo "" > /var/lib/pbench-agent/tools-default/iostat
+      echo "workload" > /var/lib/pbench-agent/tools-default/label
+      echo "" > /var/lib/pbench-agent/tools-default/mpstat
+      echo "" > /var/lib/pbench-agent/tools-default/oc
+      echo "" > /var/lib/pbench-agent/tools-default/perf
+      echo "" > /var/lib/pbench-agent/tools-default/pidstat
+      echo "" > /var/lib/pbench-agent/tools-default/sar
+      master_nodes=`oc get nodes -l pbench_agent=true,node-role.kubernetes.io/master= --no-headers | awk '{print $1}'`
+      for node in $master_nodes; do
+        echo "master" > /var/lib/pbench-agent/tools-default/remote@$node
+      done
+      infra_nodes=`oc get nodes -l pbench_agent=true,node-role.kubernetes.io/infra= --no-headers | awk '{print $1}'`
+      for node in $infra_nodes; do
+        echo "infra" > /var/lib/pbench-agent/tools-default/remote@$node
+      done
+      worker_nodes=`oc get nodes -l pbench_agent=true,node-role.kubernetes.io/worker= --no-headers | awk '{print $1}'`
+      for node in $worker_nodes; do
+        echo "worker" > /var/lib/pbench-agent/tools-default/remote@$node
+      done
+    fi
+    source /opt/pbench-agent/profile
+    workload_log "Done configuring pbench for upgrade workload run"
+
+    workload_log "Running upgrade workload"
+    if [ "${PBENCH_INSTRUMENTATION}" = "true" ]; then
+      pbench-user-benchmark -- sh /root/workload/workload.sh
+      result_dir="/var/lib/pbench-agent/$(ls -t /var/lib/pbench-agent/ | grep "pbench-user" | head -2 | tail -1)"/1/sample1
+      if [ "${ENABLE_PBENCH_COPY}" = "true" ]; then
+        pbench-copy-results --prefix ${UPGRADE_TEST_PREFIX}
+      fi
+    else
+      sh /root/workload/workload.sh
+      result_dir=/tmp
+    fi
+    workload_log "Completed upgrade workload run"
+
+    workload_log "Checking Test Results"
+    workload_log "Checking Test Exit Code"
+    if [ $(jq '.exit_code==0' ${result_dir}/exit.json) == "false" ]; then
+      workload_log "Test Failure"
+      workload_log "Test Analysis: Failed"
+      exit 1
+    fi
+    workload_log "Comparing upgrade duration to expected duration"
+    workload_log "Scaling Duration: $(jq '.duration' ${result_dir}/exit.json)"
+    if [ $(jq '.duration>'${EXPECTED_UPGRADE_DURATION}'' ${result_dir}/exit.json) == "true" ]; then
+      workload_log "EXPECTED_UPGRADE_DURATION (${EXPECTED_UPGRADE_DURATION}) exceeded ($(jq '.duration' ${result_dir}/exit.json))"
+      workload_log "Test Analysis: Failed"
+      exit 1
+    fi
+    # TODO: Check pbench-agent collected metrics for Pass/Fail
+    # TODO: Check prometheus collected metrics for Pass/Fail
+    workload_log "Test Analysis: Passed"
+  workload.sh: |
+    #!/bin/sh
+
+    result_dir=/tmp
+    if [ "${PBENCH_INSTRUMENTATION}" = "true" ]; then
+      result_dir=${benchmark_results_dir}
+    fi
+    start_time=$(date +%s)
+
+    workload_log "Before Upgrade Data"
+    oc get clusterversion/version
+    oc get clusteroperators
+
+    oc adm upgrade --force=${FORCE_UPGRADE} --to-image=${UPGRADE_NEW_VERSION_URL}:${UPGRADE_NEW_VERSION}
+
+    # Poll to see upgrade started
+    retries=0
+    while [ ${retries} -le 120 ] ; do
+      clusterversion_output=`oc get clusterversion/version`
+      if [[ "${clusterversion_output}" == *"Working towards "* ]]; then
+        workload_log "Cluster upgrade started"
+        break
+      else
+        workload_log "Cluster upgrade has not started, Poll attempts: ${retries}/120"
+        sleep 1
+      fi
+      retries=$[${retries} + 1]
+    done
+
+    # Poll to see if upgrade has completed
+    retries=0
+    while [ ${retries} -le ${UPGRADE_POLL_ATTEMPTS} ] ; do
+      clusterversion_output=`oc get clusterversion/version`
+      if [[ "${clusterversion_output}" == *"Cluster version is "* ]]; then
+        workload_log "Cluster upgrade complete"
+        break
+      else
+        workload_log "Cluster still upgrading, Poll attempts: ${retries}/${UPGRADE_POLL_ATTEMPTS}"
+        sleep 2
+      fi
+      retries=$[${retries} + 1]
+    done
+    end_time=$(date +%s)
+    duration=$((end_time-start_time))
+    exit_code=0
+    workload_log "Post Upgrade Data"
+    oc get clusterversion/version
+    oc get clusteroperators
+
+    if [[ "${clusterversion_output}" != *"Cluster version is "* ]]; then
+      workload_log "Cluster failed to scale to ${UPGRADE_NEW_VERSION} in (${UPGRADE_POLL_ATTEMPTS} * 2s)"
+      exit_code=1
+    fi
+    workload_log "Writing Exit Code and Duration"
+    jq -n '. | ."exit_code"='${exit_code}' | ."duration"='${duration}'' > "${result_dir}/exit.json"

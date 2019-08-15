@@ -1,22 +1,23 @@
 # Table of workloads
 
-| Workload/tooling                                   | Short Description                         | Minimum Requirements                  |
-|:-------------------------------------------------- |:----------------------------------------- | ------------------------------------- |
-| [Tooling](tooling.md)                              | Setup pbench instrumentation tools        | Cluster-admin, Privileged Containers  |
-| [Test](test.md)                                    | Test/Run your workload from ssh Container | Cluster-admin, Privileged Containers  |
-| [Baseline](baseline.md)                            | Baseline metrics capture                  | Tooling job*                          |
-| [Scale](scale.md)                                  | Scales worker nodes                       | Cluster-admin                         |
-| [NodeVertical](nodevertical.md)                    | Node Kubelet Density                      | Labeling Nodes                        |
-| [PodVertical](podvertical.md)                      | Max Pod Density                           | None                                  |
-| [MasterVertical](mastervertical.md)                | Master Node Stress workload               | None                                  |
-| [HTTP](http.md)                                    | HTTP ingress TPS/Latency                  | None                                  |
-| [Network](network.md)                              | TCP/UDP Throughput/Latency                | Labeling Nodes, [See below](#network) |
-| [Deployments Per Namespace](deployments-per-ns.md) | Maximum Deployments                       | None                                  |
-| [PVCscale](pvscale.md)                             | PVCScale test                             | Working storageclass                  |
-| [Conformance](conformance.md)                      | OCP/Kubernetes e2e tests                  | None                                  |
-| [Namespaces per cluster](namespaces-per-cluster.md) | Maximum Namespaces                       | None                                  |
-| [Services per namespace](services-per-namespace.md) | Maximum services per namespace           | None                                  |
-| [FIO I/O test](fio.md)                              | FIO I/O test - stress storage backend    | Privileged Containers, Working storage class |
+| Workload/tooling                                    | Short Description                         | Minimum Requirements                         |
+|:--------------------------------------------------- |:----------------------------------------- | -------------------------------------------- |
+| [Tooling](tooling.md)                               | Setup pbench instrumentation tools        | Cluster-admin, Privileged Containers         |
+| [Test](test.md)                                     | Test/Run your workload from ssh Container | Cluster-admin, Privileged Containers         |
+| [Baseline](baseline.md)                             | Baseline metrics capture                  | Tooling job*                                 |
+| [Scale](scale.md)                                   | Scales worker nodes                       | Cluster-admin                                |
+| [NodeVertical](nodevertical.md)                     | Node Kubelet Density                      | Labeling Nodes                               |
+| [PodVertical](podvertical.md)                       | Max Pod Density                           | None                                         |
+| [MasterVertical](mastervertical.md)                 | Master Node Stress workload               | None                                         |
+| [HTTP](http.md)                                     | HTTP ingress TPS/Latency                  | None                                         |
+| [Network](network.md)                               | TCP/UDP Throughput/Latency                | Labeling Nodes, [See below](#network)        |
+| [Deployments Per Namespace](deployments-per-ns.md)  | Maximum Deployments                       | None                                         |
+| [PVCscale](pvscale.md)                              | PVCScale test                             | Working storageclass                         |
+| [Conformance](conformance.md)                       | OCP/Kubernetes e2e tests                  | None                                         |
+| [Namespaces per cluster](namespaces-per-cluster.md) | Maximum Namespaces                        | None                                         |
+| [Services per namespace](services-per-namespace.md) | Maximum services per namespace            | None                                         |
+| [FIO I/O test](fio.md)                              | FIO I/O test - stress storage backend     | Privileged Containers, Working storage class |
+| [Upgrade](upgrade.md)                               | Upgrades cluster                          | Cluster-admin                                |
 
 * Baseline job without a tooled cluster just idles a cluster.  The goal is to capture resource consumption over a period of time to characterize resource requirements thus tooling is required. (For now)
 
@@ -36,20 +37,21 @@
 
 Each workload will implement a form of pass/fail criteria in order to flag if the tests have failed in CI.
 
-| Workload/tooling                                   | Pass/Fail                     |
-|:-------------------------------------------------- |:----------------------------- |
-| [Tooling](tooling.md)                              | NA                            |
-| [Test](test.md)                                    | NA                            |
-| [Baseline](baseline.md)                            | NA                            |
-| [Scale](scale.md)                                  | Yes: Test Duration            |
-| [NodeVertical](nodevertical.md)                    | Yes: Exit Code, Test Duration |
-| [PodVertical](podvertical.md)                      | Yes: Exit Code, Test Duration |
-| [MasterVertical](mastervertical.md)                | Yes: Exit Code, Test Duration |
-| [HTTP](http.md)                                    | No                            |
-| [Network](network.md)                              | No                            |
-| [Deployments Per Namespace](deployments-per-ns.md) | No                            |
-| [PVCscale](pvscale.md)                             | No                            |
-| [Conformance](conformance.md)                      | No                            |
+| Workload/tooling                                    | Pass/Fail                     |
+|:--------------------------------------------------- |:----------------------------- |
+| [Tooling](tooling.md)                               | NA                            |
+| [Test](test.md)                                     | NA                            |
+| [Baseline](baseline.md)                             | NA                            |
+| [Scale](scale.md)                                   | Yes: Test Duration            |
+| [NodeVertical](nodevertical.md)                     | Yes: Exit Code, Test Duration |
+| [PodVertical](podvertical.md)                       | Yes: Exit Code, Test Duration |
+| [MasterVertical](mastervertical.md)                 | Yes: Exit Code, Test Duration |
+| [HTTP](http.md)                                     | No                            |
+| [Network](network.md)                               | No                            |
+| [Deployments Per Namespace](deployments-per-ns.md)  | No                            |
+| [PVCscale](pvscale.md)                              | No                            |
+| [Conformance](conformance.md)                       | No                            |
 | [Namespaces per cluster](namespaces-per-cluster.md) | Yes: Exit code, Test Duration |
 | [Services per namespace](services-per-namespace.md) | Yes: Exit code, Test Duration |
 | [FIO I/O test](fio.md)                              | No                            |
+| [Upgrade](upgrade.md)                               | Yes: Test Duration            |
